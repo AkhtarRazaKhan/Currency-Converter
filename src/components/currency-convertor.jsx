@@ -1,137 +1,165 @@
-import {useEffect} from "react";
-import {useState} from "react";
-import CurrencyDropdown from "./dropdown";
-import {HiArrowsRightLeft} from "react-icons/hi2";
+import { useEffect, useState } from "react";
+import CurrencyDropdown from "./currencyDropdown";
+import { HiArrowsRightLeft } from "react-icons/hi2";
 
 const CurrencyConverter = () => {
   const [currencies, setCurrencies] = useState([]);
-  const [amount, setAmount] = useState(1);
   const [fromCurrency, setFromCurrency] = useState("USD");
   const [toCurrency, setToCurrency] = useState("INR");
-  const [convertedAmount, setConvertedAmount] = useState(null);
-  const [converting, setConverting] = useState(false);
-  const [favorites, setFavorites] = useState(
-    JSON.parse(localStorage.getItem("favorites")) || ["INR", "EUR"]
-  );
+  const [amount, setAmount] = useState(1);
+  const [converted, setConverted] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // Currencies -> https://api.frankfurter.app/currencies
-  const fetchCurrencies = async () => {
+  const [favorites, setFavorites] = useState(() => {
     try {
-      const res = await fetch("https://api.frankfurter.app/currencies");
-      const data = await res.json();
-
-      setCurrencies(Object.keys(data));
-    } catch (error) {
-      console.error("Error Fetching", error);
+      return JSON.parse(localStorage.getItem("fav")) || ["USD", "INR", "EUR"];
+    } catch {
+      return ["USD", "INR", "EUR"];
     }
-  };
+  });
 
+  // Load currencies 
   useEffect(() => {
-    fetchCurrencies();
+    const load = async () => {
+      try {
+        const res = await fetch("https://open.er-api.com/v6/latest/USD");
+        const data = await res.json();
+        setCurrencies(Object.keys(data.rates || {}));
+      } catch (err) {
+        console.log(err);
+      }
+    };
+
+    load();
   }, []);
 
-  console.log(currencies);
-
-  // Conversion -> https://api.frankfurter.app/latest?amount=1&from=USD&to=INR
+  // Convert
   const convertCurrency = async () => {
-    if (!amount) return;
-    setConverting(true);
+    if (!amount || amount <= 0) return;
+
+    setLoading(true);
+    setConverted("");
+
     try {
       const res = await fetch(
-        `https://api.frankfurter.app/latest?amount=${amount}&from=${fromCurrency}&to=${toCurrency}`
+        `https://open.er-api.com/v6/latest/${fromCurrency}`
       );
+
       const data = await res.json();
 
-      setConvertedAmount(data.rates[toCurrency] + " " + toCurrency);
-    } catch (error) {
-      console.error("Error Fetching", error);
+      const rate = data?.rates?.[toCurrency];
+
+      if (!rate) throw new Error("Invalid rate");
+
+      const result = (amount * rate).toFixed(2);
+
+      setConverted(`${result} ${toCurrency}`);
+    } catch (err) {
+      setConverted("Conversion failed ❌");
     } finally {
-      setConverting(false);
+      setLoading(false);
     }
   };
 
-  const handleFavorite = (currency) => {
-    let updatedFavorites = [...favorites];
+  // toggle favorite
+  const toggleFavorite = (cur) => {
+    let updated = [...favorites];
 
-    if (favorites.includes(currency)) {
-      updatedFavorites = updatedFavorites.filter((fav) => fav !== currency);
+    if (updated.includes(cur)) {
+      updated = updated.filter((c) => c !== cur);
     } else {
-      updatedFavorites.push(currency);
+      updated.push(cur);
     }
 
-    setFavorites(updatedFavorites);
-    localStorage.setItem("favorites", JSON.stringify(updatedFavorites));
+    setFavorites(updated);
+    localStorage.setItem("fav", JSON.stringify(updated));
   };
 
+  //  swap
   const swapCurrencies = () => {
     setFromCurrency(toCurrency);
     setToCurrency(fromCurrency);
+    setConverted("");
   };
 
   return (
-    <div className="max-w-xl mx-auto my-10 p-5 bg-white rounded-lg shadow-md">
-      <h2 className="mb-5 text-2xl font-semibold text-gray-700">
-        Currency Converter
-      </h2>
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-indigo-100 via-white to-purple-100 p-4">
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-        <CurrencyDropdown
-          favorites={favorites}
-          currencies={currencies}
-          title="From:"
-          currency={fromCurrency}
-          setCurrency={setFromCurrency}
-          handleFavorite={handleFavorite}
-        />
-        {/* swap currency button */}
-        <div className="flex justify-center -mb-5 sm:mb-0">
-          <button
-            onClick={swapCurrencies}
-            className="p-2 bg-gray-200 rounded-full cursor-pointer hover:bg-gray-300"
-          >
-            <HiArrowsRightLeft className="text-xl text-gray-700" />
-          </button>
+      <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl p-8">
+
+        {/* TITLE */}
+        <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
+          Currency Converter 
+        </h1>
+
+        {/* DROPDOWNS */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-center">
+
+          <CurrencyDropdown
+            label="From"
+            currency={fromCurrency}
+            setCurrency={setFromCurrency}
+            currencies={currencies}
+            favorites={favorites}
+            toggleFavorite={toggleFavorite}
+          />
+
+          {/* SWAP */}
+          <div className="flex justify-center">
+            <button
+              onClick={swapCurrencies}
+              className="p-4 rounded-full bg-indigo-50 hover:bg-indigo-100 transition"
+            >
+              <HiArrowsRightLeft className="text-2xl text-indigo-600" />
+            </button>
+          </div>
+
+          <CurrencyDropdown
+            label="To"
+            currency={toCurrency}
+            setCurrency={setToCurrency}
+            currencies={currencies}
+            favorites={favorites}
+            toggleFavorite={toggleFavorite}
+          />
         </div>
-        <CurrencyDropdown
-          favorites={favorites}
-          currencies={currencies}
-          currency={toCurrency}
-          setCurrency={setToCurrency}
-          title="To:"
-          handleFavorite={handleFavorite}
-        />
-      </div>
 
-      <div className="mt-4">
-        <label
-          htmlFor="amount"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Amount:
-        </label>
-        <input
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          type="number"
-          className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mt-1"
-        />
-      </div>
+        {/* AMOUNT */}
+        <div className="mt-8 w-full">
+          <label className="text-sm text-gray-600 font-medium">
+            Enter Amount
+          </label>
 
-      <div className="flex justify-end mt-6">
+          <input
+            type="number"
+            value={amount}
+            min="0"
+            onChange={(e) => setAmount(e.target.value)}
+            className="w-full mt-2 p-3 border rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none"
+          />
+        </div>
+
+        {/* BUTTON */}
         <button
           onClick={convertCurrency}
-          className={`px-5 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
-          ${converting ? "animate-pulse" : ""}`}
+          disabled={loading}
+          className={`mt-6 w-full py-3 rounded-xl font-semibold transition
+          ${
+            loading
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-indigo-600 hover:bg-indigo-700 text-white"
+          }`}
         >
-          Convert
+          {loading ? "Converting..." : "Convert Currency"}
         </button>
-      </div>
 
-      {convertedAmount && (
-        <div className="mt-4 text-lg font-medium text-right text-green-600">
-          Converted Amount: {convertedAmount}
-        </div>
-      )}
+        {/* RESULT */}
+        {converted && (
+          <div className="mt-6 text-center text-2xl font-bold text-green-600">
+            {converted}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
