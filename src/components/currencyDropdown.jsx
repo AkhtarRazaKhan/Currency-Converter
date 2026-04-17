@@ -15,7 +15,7 @@ const CurrencyDropdown = ({
 
       {/* LABEL */}
       <label className="text-sm font-medium text-gray-600">
-        {label}
+       ⭐ {label}
       </label>
 
       {/* DROPDOWN WRAPPER */}
