@@ -15,7 +15,7 @@ const CurrencyDropdown = ({
 
       {/* LABEL */}
       <label className="text-sm font-medium text-gray-600">
-       ⭐ {label}
+        {label}
       </label>
 
       {/* DROPDOWN WRAPPER */}
@@ -31,7 +31,7 @@ const CurrencyDropdown = ({
           {/* FAVORITES FIRST */}
           {favorites.map((fav) => (
             <option key={fav} value={fav}>
-               {fav}
+              ⭐ {fav}
             </option>
           ))}
 
@@ -45,11 +45,11 @@ const CurrencyDropdown = ({
             ))}
         </select>
 
-        {/*  STAR BUTTON */}
+        {/* STAR BUTTON */}
         <button
           type="button"
           onClick={() => toggleFavorite(currency)}
-          className="absolute right-5 top-3 text-xl"
+          className="absolute right-3 top-3 text-xl"
         >
           <FaStar
             className={
